@@ -1,5 +1,5 @@
 use anyhow::*;
-use std::{io::Write, process::Command, };
+use std::{io::Write, mem::align_of_val, process::Command};
 use wifi_connector::network::Network;
 
 fn get_available_wifis() -> Result<String> {
@@ -78,48 +78,56 @@ fn try_connect_to_network_without_password(network: &Network) -> Result<()> {
         .output()
         .expect("Failed to execute command");
 
-
     if output.status.success() {
         Ok(())
     } else {
-        dbg!(output.stderr);
         Err(anyhow!("Couldn't connect to wifi without password"))
     }
 }
 
-fn main() {
-    let all_networks = get_all_networks();
-
-    for (idx, network) in all_networks.iter().enumerate() {
+fn print_networks(networks: &Vec<Network>) {
+    for (idx, network) in networks.iter().enumerate() {
         println!("{} - {}", idx, network);
     }
+}
 
-    println!(
-        "Which network do you choose? (0-{})",
-        all_networks.len() - 1
+fn password_prompt_for_network(network: &Network) -> String {
+    let mut password = String::new();
+    print!(
+        "Now enter the password for the selected wifi '{}': ",
+        network.ssid
     );
+    std::io::stdout().flush().unwrap();
+    std::io::stdin().read_line(&mut password).unwrap();
+    password
+}
+
+fn choose_network(max: usize) -> String {
+    println!("Which network do you choose? (0-{})", max);
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
+    input
+}
+
+fn main() {
+    let all_networks = get_all_networks();
+    print_networks(&all_networks);
+
+    let chosen_network_index = choose_network(all_networks.len() - 1);
+
     let network = all_networks
-        .get(input.trim().parse::<usize>().unwrap())
+        .get(chosen_network_index.trim().parse::<usize>().unwrap())
         .expect("Given number does not reference a network");
-    let connected = try_connect_to_network_without_password(network);
+    let mut connected = try_connect_to_network_without_password(network);
 
     if !connected.is_ok() {
-        let mut password = String::new();
-        print!(
-            "Now enter the password for the selected wifi '{}': ",
-            network.ssid
-        );
-        std::io::stdout().flush().unwrap();
-        std::io::stdin().read_line(&mut password).unwrap();
-        let result = connect_to_network(&network, password.trim());
-        if result.is_ok() {
-            println!("Successfully connected to network '{}'", network.ssid);
-        } else {
-            println!("Connection failed");
-        }
-    } else {
+        let password = password_prompt_for_network(network);
+        connected = connect_to_network(&network, password.trim());
+    }
+
+    if connected.is_ok() {
         println!("Successfully connected to network '{}'", network.ssid);
+    } else {
+        println!("Connection failed");
     }
 }
