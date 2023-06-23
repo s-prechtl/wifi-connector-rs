@@ -1,8 +1,10 @@
+use std::fmt::Display;
+
 #[derive(Debug)]
 pub struct Network {
-    in_use: bool,
-    ssid: String,
-    signal: u8,
+    pub in_use: bool,
+    pub ssid: String,
+    pub signal: u8,
 }
 
 impl Network {
@@ -69,5 +71,11 @@ impl Network {
             .expect("Could not parse signal");
 
         return network;
+    }
+}
+
+impl Display for Network {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return write!(f, "{} - {} - {} ", self.in_use, self.ssid, self.signal);
     }
 }
