@@ -109,8 +109,14 @@ fn choose_network(max: usize) -> String {
     input
 }
 
+fn print_header() {
+    println!("Index - In use - SSID - Signal");
+}
+
 fn main() {
     let all_networks = get_all_networks();
+
+    print_header();
     print_networks(&all_networks);
 
     let chosen_network_index = choose_network(all_networks.len() - 1);
