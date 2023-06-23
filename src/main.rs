@@ -83,7 +83,7 @@ fn main() {
     let network = all_networks.get(input.trim().parse::<usize>().unwrap()).expect("Given number does not reference a network");
     let mut password = String::new();
     print!("Now enter the password for the selected wifi '{}': ", network.ssid);
-    std::io::stdout().flush();
+    std::io::stdout().flush().unwrap();
     std::io::stdin().read_line(&mut password).unwrap();
     let result = connect_to_network(&network, password.trim());
     if  result.is_ok() {
