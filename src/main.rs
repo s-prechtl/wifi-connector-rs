@@ -1,5 +1,5 @@
 use anyhow::*;
-use std::{io::Write, mem::align_of_val, process::Command};
+use std::{collections::HashMap, io::Write, process::Command, vec};
 use wifi_connector::network::Network;
 
 fn get_available_wifis() -> Result<String> {
@@ -113,8 +113,25 @@ fn print_header() {
     println!("Index - In use - SSID - Signal");
 }
 
+fn uniquify_networks(networks: Vec<Network>) -> Vec<Network> {
+    let mut unique_networks: HashMap<String, Network> = HashMap::new();
+
+    for network in &networks {
+        let current_ssid = &network.ssid;
+        if unique_networks.keys().any(|key| key == current_ssid) {
+            if unique_networks[current_ssid].signal < network.signal {
+                unique_networks.insert(current_ssid.to_owned(), network.to_owned());
+            }
+        } else {
+            unique_networks.insert(current_ssid.to_owned(), network.to_owned());
+        }
+    }
+
+    return unique_networks.into_values().collect();
+}
+
 fn main() {
-    let all_networks = get_all_networks();
+    let all_networks = uniquify_networks(get_all_networks());
 
     print_header();
     print_networks(&all_networks);
