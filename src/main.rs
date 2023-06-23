@@ -1,6 +1,6 @@
-use wifi_connector::network::Network;
 use anyhow::*;
-use std::{process::Command, vec, io::Write};
+use std::{io::Write, process::Command, };
+use wifi_connector::network::Network;
 
 fn get_available_wifis() -> Result<String> {
     let output = Command::new("nmcli")
@@ -36,7 +36,8 @@ fn get_all_networks() -> Vec<Network> {
     let nmcli_output: String = get_available_wifis().expect("Wifi fetching exploded");
     let positions = get_descriptor_positions(&nmcli_output);
 
-    let mut all_wifi_lines: Vec<String> = nmcli_output.split('\n').map(|s| String::from(s)).collect();
+    let mut all_wifi_lines: Vec<String> =
+        nmcli_output.split('\n').map(|s| String::from(s)).collect();
     let mut all_networks: Vec<Network> = vec![];
     all_wifi_lines.remove(0);
 
@@ -61,8 +62,6 @@ fn connect_to_network(network: &Network, password: &str) -> Result<()> {
         .output()
         .expect("Failed to execute command");
 
-    println!("{:?}", password);
-
     if output.status.success() {
         Ok(())
     } else {
@@ -70,25 +69,57 @@ fn connect_to_network(network: &Network, password: &str) -> Result<()> {
     }
 }
 
+fn try_connect_to_network_without_password(network: &Network) -> Result<()> {
+    let output = Command::new("nmcli")
+        .arg("device")
+        .arg("wifi")
+        .arg("connect")
+        .arg(&network.ssid.trim())
+        .output()
+        .expect("Failed to execute command");
+
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        dbg!(output.stderr);
+        Err(anyhow!("Couldn't connect to wifi without password"))
+    }
+}
+
 fn main() {
     let all_networks = get_all_networks();
 
     for (idx, network) in all_networks.iter().enumerate() {
-       println!("{} - {}", idx, network);
+        println!("{} - {}", idx, network);
     }
 
-    println!("Which network do you choose? (0-{})", all_networks.len() - 1);
+    println!(
+        "Which network do you choose? (0-{})",
+        all_networks.len() - 1
+    );
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
-    let network = all_networks.get(input.trim().parse::<usize>().unwrap()).expect("Given number does not reference a network");
-    let mut password = String::new();
-    print!("Now enter the password for the selected wifi '{}': ", network.ssid);
-    std::io::stdout().flush().unwrap();
-    std::io::stdin().read_line(&mut password).unwrap();
-    let result = connect_to_network(&network, password.trim());
-    if  result.is_ok() {
-        println!("Successfully connected to network '{}'", network.ssid);
+    let network = all_networks
+        .get(input.trim().parse::<usize>().unwrap())
+        .expect("Given number does not reference a network");
+    let connected = try_connect_to_network_without_password(network);
+
+    if !connected.is_ok() {
+        let mut password = String::new();
+        print!(
+            "Now enter the password for the selected wifi '{}': ",
+            network.ssid
+        );
+        std::io::stdout().flush().unwrap();
+        std::io::stdin().read_line(&mut password).unwrap();
+        let result = connect_to_network(&network, password.trim());
+        if result.is_ok() {
+            println!("Successfully connected to network '{}'", network.ssid);
+        } else {
+            println!("Connection failed");
+        }
     } else {
-        println!("Connection failed");
+        println!("Successfully connected to network '{}'", network.ssid);
     }
 }
