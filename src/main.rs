@@ -58,7 +58,7 @@ fn connect_to_network(network: &Network, password: &str) -> Result<()> {
         .arg("connect")
         .arg(&network.ssid.trim())
         .arg("password")
-        .arg(password)
+        .arg(password.trim())
         .output()
         .expect("Failed to execute command");
 
